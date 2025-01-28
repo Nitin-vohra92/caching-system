@@ -1,66 +1,73 @@
 package com.example.caching_system.strategy;
 
-import com.example.caching_system.model.Node;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import java.util.HashMap;
-import java.util.Map;
 
-@Component
-public class LRUCacheStrategy<K, V> implements CacheStrategy<K, V> {
+public class LRUCacheStrategy<K, V> implements Cache<K, V> {
     private final int capacity;
-    private final Map<K, Node<K, V>> map;
-    private final Node<K, V> head;
-    private final Node<K, V> tail;
+    private final Map<K, Node<K, V>> map = new ConcurrentHashMap<>();
+    private final DoublyLinkedList<K, V> dll = new DoublyLinkedList<>();
+    private final ReentrantReadWriteLock lock;
 
-    public LRUCacheStrategy(@Value("${cache.capacity:5}")  int capacity) {
+
+    public LRUCacheStrategy(int capacity) {
         this.capacity = capacity;
-        this.map = new HashMap<>();
+        this.lock = new ReentrantReadWriteLock();
 
-        // Dummy head and tail nodes for the doubly linked list
-        this.head = new Node<>(null, null);
-        this.tail = new Node<>(null, null);
-        head.next = tail;
-        tail.prev = head;
-    }
-
-    @Override
-    public V get(K key) {
-        if (!map.containsKey(key)) {
-            return null;
-        }
-
-        Node<K, V> node = map.get(key);
-        moveToHead(node);
-        return node.value;
     }
 
     @Override
     public void put(K key, V value) {
-        if (map.containsKey(key)) {
-            Node<K, V> node = map.get(key);
-            node.value = value;
-            moveToHead(node);
-        } else {
-            Node<K, V> newNode = new Node<>(key, value);
-            map.put(key, newNode);
-            addToHead(newNode);
-
-            if (map.size() > capacity) {
-                Node<K, V> tailNode = removeTail();
-                map.remove(tailNode.key);
+        lock.writeLock().lock();
+        try{
+            if (map.containsKey(key)) {
+                Node<K, V> node = map.get(key);
+                node.value = value;
+                dll.moveToFront(node);
+            } else {
+                if (map.size() >= capacity) {
+                    Node<K, V> lru = dll.removeLast();
+                    map.remove(lru.key);
+                }
+                Node<K, V> newNode = new Node<>(key, value);
+                map.put(key, newNode);
+                dll.addToFront(newNode);
             }
+        }
+        finally {
+            lock.writeLock().unlock();
         }
     }
 
     @Override
-    public void delete(K key) {
-        if (map.containsKey(key)) {
+    public V get(K key) {
+        lock.readLock().lock();
+        try{
+            if (!map.containsKey(key)) {
+                return null;
+            }
             Node<K, V> node = map.get(key);
-            removeNode(node);
-            map.remove(key);
+            dll.moveToFront(node);
+            return node.value;
+        } finally {
+            lock.readLock().unlock();
         }
+
+    }
+
+    @Override
+    public void delete(K key) {
+        lock.writeLock().lock();
+       try{
+           Node<K, V> node = map.remove(key);
+           if (node != null) {
+               dll.remove(node);
+           }
+       } finally {
+           lock.writeLock().unlock();
+       }
     }
 
     @Override
@@ -68,26 +75,51 @@ public class LRUCacheStrategy<K, V> implements CacheStrategy<K, V> {
         return map.size();
     }
 
-    private void addToHead(Node<K, V> node) {
-        node.next = head.next;
-        node.prev = head;
-        head.next.prev = node;
-        head.next = node;
+    // Doubly linked list node and helper classes
+    private static class Node<K, V> {
+        K key;
+        V value;
+        Node<K, V> prev, next;
+
+        Node(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
     }
 
-    private void removeNode(Node<K, V> node) {
-        node.prev.next = node.next;
-        node.next.prev = node.prev;
-    }
+    private static class DoublyLinkedList<K, V> {
+        private final Node<K, V> head = new Node<>(null, null);
+        private final Node<K, V> tail = new Node<>(null, null);
 
-    private void moveToHead(Node<K, V> node) {
-        removeNode(node);
-        addToHead(node);
-    }
+        DoublyLinkedList() {
+            head.next = tail;
+            tail.prev = head;
+        }
 
-    private Node<K, V> removeTail() {
-        Node<K, V> tailNode = tail.prev;
-        removeNode(tailNode);
-        return tailNode;
+        void addToFront(Node<K, V> node) {
+            node.next = head.next;
+            node.prev = head;
+            head.next.prev = node;
+            head.next = node;
+        }
+
+        void moveToFront(Node<K, V> node) {
+            remove(node);
+            addToFront(node);
+        }
+
+        void remove(Node<K, V> node) {
+            node.prev.next = node.next;
+            node.next.prev = node.prev;
+        }
+
+        Node<K, V> removeLast() {
+            if (tail.prev == head) {
+                return null;
+            }
+            Node<K, V> last = tail.prev;
+            remove(last);
+            return last;
+        }
     }
 }

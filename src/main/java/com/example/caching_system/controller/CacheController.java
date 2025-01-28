@@ -37,5 +37,11 @@ public class CacheController {
     public String size() {
         return "Cache size: " + cacheService.size();
     }
+
+    @GetMapping ("/")
+    public String getAll(){
+        return cacheService.toString();
+    }
+
 }
 

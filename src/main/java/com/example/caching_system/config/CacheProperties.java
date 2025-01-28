@@ -9,6 +9,7 @@ public class CacheProperties {
 
     private String evictionPolicy;
     private int capacity;
+    private long ttl;
 
     // Getters and Setters
     public String getEvictionPolicy() {
@@ -25,5 +26,13 @@ public class CacheProperties {
 
     public void setCapacity(int capacity) {
         this.capacity = capacity;
+    }
+
+    public long getTtl() {
+        return ttl;
+    }
+
+    public void setTtl(long ttl) {
+        this.ttl = ttl;
     }
 }

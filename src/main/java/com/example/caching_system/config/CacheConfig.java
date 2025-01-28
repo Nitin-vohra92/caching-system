@@ -18,7 +18,7 @@ public class CacheConfig {
     @Bean
     public Cache<String, String> cache() {
         return "LFU".equalsIgnoreCase(cacheProperties.getEvictionPolicy())
-                ? new LFUCacheStrategy<>(cacheProperties.getCapacity())
-                : new LRUCacheStrategy<>(cacheProperties.getCapacity());
+                ? new LFUCacheStrategy<>(cacheProperties.getCapacity(), cacheProperties.getTtl())
+                : new LRUCacheStrategy<>(cacheProperties.getCapacity(), cacheProperties.getTtl());
     }
 }

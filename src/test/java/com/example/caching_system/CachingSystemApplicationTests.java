@@ -1,10 +1,12 @@
 package com.example.caching_system;
 
+import com.example.caching_system.repository.CacheRepository;
 import com.example.caching_system.service.CacheService;
 import com.example.caching_system.strategy.Cache;
 import com.example.caching_system.strategy.LRUCacheStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,10 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class CachingSystemApplicationTests {
     private CacheService<String, String> cacheService;
 
+    @Autowired
+    private CacheRepository cacheRepository;
+
     @BeforeEach
     void setUp() {
-        Cache<String, String> cache = new LRUCacheStrategy<>(3);
-        cacheService = new CacheService<>(cache);
+        Cache<String, String> cache = new LRUCacheStrategy<>(3, 1000);
+        cacheService = new CacheService<>(cache, cacheRepository);
     }
 
     @Test

@@ -9,7 +9,7 @@ public class LFUCacheStrategy<K, V> implements Cache<K, V> {
     private final Map<K, Node<K, V>> map = new ConcurrentHashMap<>();
     private final TreeMap<Integer, LinkedHashSet<Node<K, V>>> freqMap = new TreeMap<>();
 
-    public LFUCacheStrategy(int capacity) {
+    public LFUCacheStrategy(int capacity, long ttl) {
         this.capacity = capacity;
     }
 

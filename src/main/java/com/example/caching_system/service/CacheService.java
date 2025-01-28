@@ -7,6 +7,7 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -24,6 +25,7 @@ public class CacheService<K, V> {
     @PostConstruct
     public void initializeCacheFromDatabase() {
         List<CacheEntity> entities = cacheRepository.findAll();
+        entities.sort(Comparator.comparingLong(CacheEntity::getTimestamp));
         entities.forEach(entity -> cache.put((K) entity.getKey(), (V) entity.getValue()));
     }
 

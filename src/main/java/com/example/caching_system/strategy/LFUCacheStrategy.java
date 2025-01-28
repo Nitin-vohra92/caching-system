@@ -4,6 +4,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 
+@Deprecated
 public class LFUCacheStrategy<K, V> implements Cache<K, V> {
     private final int capacity;
     private final Map<K, Node<K, V>> map = new ConcurrentHashMap<>();
